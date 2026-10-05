@@ -3,3 +3,4 @@ doogee/postiz.env
 doogee/outbox/
 doogee/sent/
 doogee/*.log
+runs/.runner

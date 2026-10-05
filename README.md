@@ -29,3 +29,13 @@ Cron (set by `setup-termux.sh`): ingest every 10 min, upload every 15. Needs the
 
 ## Unverified
 Written from memory of Postiz's public API (`POST /public/v1/upload`, `POST /public/v1/posts`, `GET /public/v1/integrations`, raw API key in `Authorization`). I couldn't reach a live instance from this sandbox; verify payload shape and per-provider `settings` against your Postiz version's docs before relying on `now`/`schedule`.
+
+## Run reports (Giles / Divya / anyone with hardware)
+```
+git clone https://github.com/jocuhinside/sensebeen && cd sensebeen
+git checkout claude/confident-cerf-23tgtq && git pull
+echo giles > runs/.runner          # or divya; gitignored
+scripts/run-and-report             # local report in runs/<name>/<UTC>.json
+scripts/run-and-report --commit    # also pushes it to branch runs/<name> only
+```
+Checks toolchain, runs the media pipeline on a synthetic image in a throwaway copy (resize, metadata-canary strip, dedupe), and probes sensors/camera/serial by capability only. Reports carry a hashed host id, coarse OS/arch, and git commit; no hostname, IPs, serials, GPS, paths, or `postiz.env`. A scrub guard deletes the report if it finds any of those. Exit code is non-zero on any failure. On Termux install `termux-api` + the Termux:API app first or the sensor checks will fail. Review the JSON before `--commit`: pushed history is permanent. Needs write access to the repo (add them as collaborators); `runs/*` branches never touch the working branch.
