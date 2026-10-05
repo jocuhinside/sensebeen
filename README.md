@@ -29,3 +29,10 @@ Cron (set by `setup-termux.sh`): ingest every 10 min, upload every 15. Needs the
 
 ## Unverified
 Written from memory of Postiz's public API (`POST /public/v1/upload`, `POST /public/v1/posts`, `GET /public/v1/integrations`, raw API key in `Authorization`). I couldn't reach a live instance from this sandbox; verify payload shape and per-provider `settings` against your Postiz version's docs before relying on `now`/`schedule`.
+
+## PQC smoke test
+
+The repository includes a reproducible environment-level PQC check in
+[`pqc/`](pqc/). Run `./pqc/pqc-smoke-test.sh` from the repository root to
+exercise ML-KEM-768 and ML-DSA-65 through the host OpenSSL provider. This is a
+provider/readiness check only; the current application has no PQC code path.
