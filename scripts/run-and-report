@@ -1,0 +1,94 @@
+#!/usr/bin/env bash
+# Run the sensebeen node checks on this machine and write a comparable, privacy-scrubbed JSON report.
+#   scripts/run-and-report [--runner NAME] [--commit] [--no-push]
+# Runner name: --runner, $SENSEBEEN_RUNNER, or runs/.runner (gitignored). e.g. giles, divya.
+# Report: runs/<runner>/<UTC-ts>.json. --commit puts it on branch runs/<runner> and pushes (never touches main/work branches).
+# Never recorded: hostname, IPs, MACs, serials, GPS, usernames, env vars, postiz.env contents.
+set -uo pipefail
+ROOT=$(cd "$(dirname "$0")/.." && pwd); cd "$ROOT"
+COMMIT=0; PUSH=1; RUNNER=${SENSEBEEN_RUNNER:-}
+while [ $# -gt 0 ]; do case "$1" in
+  --runner) RUNNER=${2:?}; shift 2 ;;
+  --commit) COMMIT=1; shift ;;
+  --no-push) PUSH=0; shift ;;
+  *) echo "unknown arg $1" >&2; exit 2 ;;
+esac; done
+[ -n "$RUNNER" ] || { [ -f runs/.runner ] && RUNNER=$(tr -d ' \n' < runs/.runner); }
+RUNNER=$(printf '%s' "$RUNNER" | tr '[:upper:]' '[:lower:]' | tr -cd 'a-z0-9_-')
+[ -n "$RUNNER" ] || { echo "set --runner NAME (or SENSEBEEN_RUNNER, or runs/.runner)" >&2; exit 2; }
+command -v jq >/dev/null || { echo "jq required" >&2; exit 2; }
+
+TS=$(date -u +%Y%m%dT%H%M%SZ); OUT="runs/$RUNNER/$TS.json"; mkdir -p "runs/$RUNNER"
+WORK=$(mktemp -d); trap 'rm -rf "$WORK"' EXIT
+CHECKS="$WORK/checks.ndjson"; : > "$CHECKS"
+check() { # name status(pass|fail|skip) detail
+  jq -cn --arg n "$1" --arg s "$2" --arg d "${3:-}" '{name:$n,status:$s,detail:$d}' >> "$CHECKS"
+  printf '%-22s %-5s %s\n' "$1" "$2" "${3:-}" >&2
+}
+have() { command -v "$1" >/dev/null 2>&1; }
+
+# --- platform (coarse + hashed host id so runs are groupable without identifying the machine) ---
+TERMUX=false; [ -d /data/data/com.termux ] && TERMUX=true
+HOST_ID=$( (cat /etc/machine-id 2>/dev/null || hostname 2>/dev/null || echo unknown) | sha256sum | cut -c1-12)
+PLATFORM=$(jq -cn --arg os "$(uname -s)" --arg kernel "$(uname -r)" --arg arch "$(uname -m)" \
+  --arg host_id "$HOST_ID" --argjson termux "$TERMUX" '{os:$os,kernel:$kernel,arch:$arch,host_id:$host_id,termux:$termux}')
+
+# --- toolchain ---
+for t in bash curl jq ffmpeg sha256sum git; do
+  if have "$t"; then check "tool:$t" pass "$("$t" --version 2>&1 | head -1 | cut -c1-80)"; else check "tool:$t" fail "missing"; fi
+done
+
+# --- media pipeline self-test on a synthetic image, in a throwaway copy (never touches doogee/outbox or .seen) ---
+if have ffmpeg; then
+  cp -r doogee "$WORK/doogee"; rm -rf "$WORK/doogee/outbox" "$WORK/doogee/.seen" "$WORK/doogee/sent"
+  ffmpeg -nostdin -loglevel error -y -f lavfi -i testsrc=size=3000x2000:rate=1 -frames:v 1 \
+    -metadata comment="SENSEBEEN-CANARY" "$WORK/t.jpg" 2>/dev/null
+  if bash "$WORK/doogee/media-prep.sh" "$WORK/t.jpg" >"$WORK/prep.log" 2>&1; then
+    OUTF=$(ls "$WORK"/doogee/outbox/*.jpg 2>/dev/null | head -1)
+    if [ -z "$OUTF" ]; then check media-prep:stage fail "no output staged"
+    else
+      W=$(ffprobe -v error -select_streams v:0 -show_entries stream=width -of csv=p=0 "$OUTF" 2>/dev/null || echo 0)
+      [ "${W:-0}" -le 1920 ] && check media-prep:resize pass "width=$W" || check media-prep:resize fail "width=$W"
+      grep -aq SENSEBEEN-CANARY "$OUTF" && check media-prep:metadata fail "canary tag survived" || check media-prep:metadata pass "stripped"
+    fi
+    bash "$WORK/doogee/media-prep.sh" "$WORK/t.jpg" 2>&1 | grep -q 'skip (seen)' \
+      && check media-prep:dedupe pass "" || check media-prep:dedupe fail "re-ingest not skipped"
+  else check media-prep:stage fail "$(tail -1 "$WORK/prep.log" | cut -c1-120)"; fi
+else check media-prep:stage skip "no ffmpeg"; fi
+
+# --- sensors (capability only: counts/names, never readings that could identify location) ---
+if $TERMUX && have termux-sensor; then
+  N=$(timeout 15 termux-sensor -l 2>/dev/null | jq -r '.sensors|length' 2>/dev/null || echo 0)
+  [ "${N:-0}" -gt 0 ] && check sensors:termux pass "$N sensors" || check sensors:termux fail "termux-sensor -l returned none (Termux:API installed?)"
+  have termux-battery-status && check battery pass "$(termux-battery-status 2>/dev/null | jq -r '"\(.percentage)% \(.status)"' 2>/dev/null)" || check battery skip ""
+  have termux-camera-info && check camera pass "$(termux-camera-info 2>/dev/null | jq -r 'length' 2>/dev/null) cams" || check camera skip "no termux-camera-info"
+else
+  HW=$(ls /sys/class/hwmon 2>/dev/null | wc -l); IIO=$(ls /sys/bus/iio/devices 2>/dev/null | wc -l)
+  [ "$((HW+IIO))" -gt 0 ] && check sensors:linux pass "hwmon=$HW iio=$IIO" || check sensors:linux skip "none exposed"
+  V=$(ls /dev/video* 2>/dev/null | wc -l); check camera:v4l "$([ "$V" -gt 0 ] && echo pass || echo skip)" "$V video devices"
+fi
+ls /dev/ttyUSB* /dev/ttyACM* >/dev/null 2>&1 && check serial pass "$(ls /dev/ttyUSB* /dev/ttyACM* 2>/dev/null | wc -l) tty devices" || check serial skip "no USB serial attached"
+
+# --- repo state ---
+GIT=$(jq -cn --arg commit "$(git rev-parse --short HEAD 2>/dev/null)" --arg branch "$(git rev-parse --abbrev-ref HEAD 2>/dev/null)" \
+  --argjson dirty "$([ -n "$(git status --porcelain --untracked-files=no 2>/dev/null)" ] && echo true || echo false)" '{commit:$commit,branch:$branch,dirty:$dirty}')
+
+jq -n --arg runner "$RUNNER" --arg ts "$TS" --argjson platform "$PLATFORM" --argjson git "$GIT" --slurpfile checks "$CHECKS" '
+  {schema:1, runner:$runner, ts:$ts, platform:$platform, git:$git, checks:$checks,
+   summary:{pass:($checks|map(select(.status=="pass"))|length), fail:($checks|map(select(.status=="fail"))|length), skip:($checks|map(select(.status=="skip"))|length)}}' > "$OUT"
+
+# --- scrub guard: refuse to keep a report that carries anything identifying ---
+if grep -Eq "$(hostname 2>/dev/null | sed 's/[][\.*^$/]/\\&/g' | grep . || echo '^$')|$(id -un 2>/dev/null)|/home/|/data/data/|([0-9]{1,3}\.){3}[0-9]{1,3}|([0-9a-f]{2}:){5}[0-9a-f]{2}|POSTIZ_API_KEY" "$OUT" 2>/dev/null; then
+  echo "scrub guard tripped; report removed (inspect checks for leaked paths/hostnames)" >&2; rm -f "$OUT"; exit 3
+fi
+echo "report: $OUT  ($(jq -r '.summary|"pass=\(.pass) fail=\(.fail) skip=\(.skip)"' "$OUT"))" >&2
+
+if [ "$COMMIT" = 1 ]; then
+  CUR=$(git rev-parse --abbrev-ref HEAD)
+  git stash list >/dev/null
+  git checkout -q -B "runs/$RUNNER" 2>/dev/null || { echo "could not switch to runs/$RUNNER" >&2; exit 4; }
+  git add "$OUT" && git commit -q -m "run report: $RUNNER $TS" -- "$OUT"
+  [ "$PUSH" = 1 ] && git push -u origin "runs/$RUNNER"
+  git checkout -q "$CUR"
+fi
+[ "$(jq '.summary.fail' "$OUT")" = 0 ]

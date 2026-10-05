@@ -36,3 +36,13 @@ The repository includes a reproducible environment-level PQC check in
 [`pqc/`](pqc/). Run `./pqc/pqc-smoke-test.sh` from the repository root to
 exercise ML-KEM-768 and ML-DSA-65 through the host OpenSSL provider. This is a
 provider/readiness check only; the current application has no PQC code path.
+
+## Run reports (Giles / Divya / anyone with hardware)
+```
+git clone -b claude/sleepy-ride-hc7wry https://github.com/jocuhinside/sensebeen.git
+cd sensebeen
+echo giles > runs/.runner          # or divya; gitignored
+scripts/run-and-report             # local report in runs/<name>/<UTC>.json
+scripts/run-and-report --commit    # also pushes it to branch runs/<name> only
+```
+Checks toolchain, runs the media pipeline on a synthetic image in a throwaway copy (resize, metadata-canary strip, dedupe), and probes sensors/camera/serial by capability only. Reports carry a hashed host id, coarse OS/arch, and git commit; no hostname, IPs, serials, GPS, paths, or `postiz.env`. A scrub guard deletes the report if it finds any of those. Exit code is non-zero on any failure. On Termux install `termux-api` + the Termux:API app first or the sensor checks will fail. Review the JSON before `--commit`: pushed history is permanent. Needs write access to the repo (add them as collaborators); `runs/*` branches never touch the working branch.
