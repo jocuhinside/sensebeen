@@ -1,0 +1,61 @@
+services:
+  postiz:
+    image: ghcr.io/gitroomhq/postiz-app:latest
+    container_name: postiz
+    restart: always
+    env_file: .env
+    environment:
+      DATABASE_URL: postgresql://postiz:${POSTGRES_PASSWORD}@postiz-postgres:5432/postiz
+      REDIS_URL: redis://postiz-redis:6379
+      BACKEND_INTERNAL_URL: http://localhost:3000
+      IS_GENERAL: "true"
+      STORAGE_PROVIDER: local
+      UPLOAD_DIRECTORY: /uploads
+      NEXT_PUBLIC_UPLOAD_DIRECTORY: /uploads
+      DISABLE_REGISTRATION: ${DISABLE_REGISTRATION:-false}
+    ports:
+      - "${POSTIZ_BIND:-127.0.0.1}:5000:5000"
+    volumes:
+      - postiz-config:/config/
+      - postiz-uploads:/uploads/
+    depends_on:
+      postiz-postgres: { condition: service_healthy }
+      postiz-redis: { condition: service_healthy }
+    networks: [postiz]
+
+  postiz-postgres:
+    image: postgres:17-alpine
+    restart: always
+    environment:
+      POSTGRES_USER: postiz
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: postiz
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test: pg_isready -U postiz -d postiz
+      interval: 10s
+      timeout: 3s
+      retries: 3
+    networks: [postiz]
+
+  postiz-redis:
+    image: redis:7.2
+    restart: always
+    healthcheck:
+      test: redis-cli ping
+      interval: 10s
+      timeout: 3s
+      retries: 3
+    volumes:
+      - redis-data:/data
+    networks: [postiz]
+
+volumes:
+  postgres-data:
+  redis-data:
+  postiz-config:
+  postiz-uploads:
+
+networks:
+  postiz:
