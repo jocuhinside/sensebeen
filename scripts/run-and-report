@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Run the sensebeen node checks on this machine and write a comparable, privacy-scrubbed JSON report.
 #   scripts/run-and-report [--runner NAME] [--commit] [--no-push]
-# Runner name: --runner, $SENSEBEEN_RUNNER, or runs/.runner (gitignored). e.g. giles, divya.
+# Runner name: --runner, $SENSEBEEN_RUNNER, or runs/.runner (gitignored). e.g. giles. Reviewers/observers do not run or commit reports.
 # Report: runs/<runner>/<UTC-ts>.json. --commit puts it on branch runs/<runner> and pushes (never touches main/work branches).
 # Never recorded: hostname, IPs, MACs, serials, GPS, usernames, env vars, postiz.env contents.
 set -uo pipefail
