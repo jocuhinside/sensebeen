@@ -1,0 +1,84 @@
+{
+  "schema": 1,
+  "runner": "jordan",
+  "ts": "20261006T041128Z",
+  "platform": {
+    "os": "Linux",
+    "kernel": "7.0.0-34-generic",
+    "arch": "x86_64",
+    "host_id": "d6fd34b14123",
+    "termux": false
+  },
+  "git": {
+    "commit": "cb5f2d6",
+    "branch": "claude/sleepy-ride-hc7wry",
+    "dirty": false
+  },
+  "checks": [
+    {
+      "name": "tool:bash",
+      "status": "pass",
+      "detail": "GNU bash, version 5.3.9(1)-release (x86_64-pc-linux-gnu)"
+    },
+    {
+      "name": "tool:curl",
+      "status": "pass",
+      "detail": "curl 8.18.0 (x86_64-pc-linux-gnu) libcurl/8.18.0 OpenSSL/3.5.5 zlib/1.3.1 brotli"
+    },
+    {
+      "name": "tool:jq",
+      "status": "pass",
+      "detail": "jq-1.8.1"
+    },
+    {
+      "name": "tool:ffmpeg",
+      "status": "pass",
+      "detail": "ffmpeg version N-126626-g7070fe638e-20260917 Copyright (c) 2000-2026 the FFmpeg "
+    },
+    {
+      "name": "tool:sha256sum",
+      "status": "pass",
+      "detail": "sha256sum (uutils coreutils) 0.8.0"
+    },
+    {
+      "name": "tool:git",
+      "status": "pass",
+      "detail": "git version 2.53.0"
+    },
+    {
+      "name": "media-prep:resize",
+      "status": "pass",
+      "detail": "width=1920"
+    },
+    {
+      "name": "media-prep:metadata",
+      "status": "pass",
+      "detail": "stripped"
+    },
+    {
+      "name": "media-prep:dedupe",
+      "status": "pass",
+      "detail": ""
+    },
+    {
+      "name": "sensors:linux",
+      "status": "pass",
+      "detail": "hwmon=5 iio=2"
+    },
+    {
+      "name": "camera:v4l",
+      "status": "skip",
+      "detail": "0 video devices"
+    },
+    {
+      "name": "serial",
+      "status": "skip",
+      "detail": "no USB serial attached"
+    }
+  ],
+  "summary": {
+    "pass": 10,
+    "fail": 0,
+    "skip": 2
+  }
+}
