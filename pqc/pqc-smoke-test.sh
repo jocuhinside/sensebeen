@@ -11,6 +11,9 @@ command -v openssl >/dev/null || {
 }
 
 tmpdir=$(mktemp -d)
+# The keys below are one-run test keys; dispose of them however the script exits.
+# Set PQC_KEEP_ARTIFACTS=1 to keep the directory for debugging (it then holds PRIVATE test keys).
+trap '[ "${PQC_KEEP_ARTIFACTS:-0}" = 1 ] || rm -rf "$tmpdir"' EXIT
 printf 'SenseBeen PQC smoke test\n' > "$tmpdir/message.txt"
 
 echo "PQC smoke test"
@@ -44,4 +47,8 @@ openssl pkeyutl -verify \
 echo "PASS: ML-DSA-65 signature verified"
 
 echo "RESULT: PASS"
-echo "Artifacts were kept at: $tmpdir"
+if [ "${PQC_KEEP_ARTIFACTS:-0}" = 1 ]; then
+  echo "Artifacts kept at: $tmpdir (contains one-run PRIVATE test keys; delete when done)"
+else
+  echo "One-run test keys disposed."
+fi
