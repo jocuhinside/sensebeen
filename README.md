@@ -37,11 +37,14 @@ The repository includes a reproducible environment-level PQC check in
 exercise ML-KEM-768 and ML-DSA-65 through the host OpenSSL provider. This is a
 provider/readiness check only; the current application has no PQC code path.
 
-## Run reports (Giles / Divya / anyone with hardware)
+## Run reports (for people authorized to execute, e.g. Giles)
+
+Reviewers and observers read the reports and do not run, commit or push them.
+
 ```
 git clone -b claude/sleepy-ride-hc7wry https://github.com/jocuhinside/sensebeen.git
 cd sensebeen
-echo giles > runs/.runner          # or divya; gitignored
+echo giles > runs/.runner          # your own runner name; gitignored
 scripts/run-and-report             # local report in runs/<name>/<UTC>.json
 scripts/run-and-report --commit    # also pushes it to branch runs/<name> only
 ```
