@@ -1,0 +1,18 @@
+# Install to ~/.config/systemd/user/protonmail-bridge.service
+# Enable: systemctl --user daemon-reload && systemctl --user enable --now protonmail-bridge
+# Persist across logout: loginctl enable-linger "$USER"
+# NOTE: run `protonmail-bridge --cli` once interactively and `login` first.
+[Unit]
+Description=Proton Mail Bridge (noninteractive)
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+ExecStart=/usr/bin/protonmail-bridge --noninteractive
+Restart=on-failure
+RestartSec=10
+# If your gpg key has a passphrase, pass needs an unlocked gpg-agent; use a no-passphrase
+# subkey or gpg-preset-passphrase for unattended starts.
+
+[Install]
+WantedBy=default.target
