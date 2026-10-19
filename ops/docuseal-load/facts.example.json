@@ -1,0 +1,18 @@
+{
+ "rev": "D.2",
+ "folder": "Package - Rev D.2",
+ "sender_role": "SenseBeen",
+ "role_order": ["SenseBeen", "Counterparty A", "Counterparty B"],
+ "date_format": "MM/DD/YYYY",
+ "skip": ["UAT-00", "UAT-07"],
+ "roles": [
+  ["^SENSEBEEN", "SenseBeen"],
+  ["^COUNTERPARTY A", "Counterparty A"],
+  ["^COUNTERPARTY B", "Counterparty B"],
+  ["Jane Example, Director", "Director: Jane Example", ["UAT-06"]]
+ ],
+ "fill": [
+  {"find": "[SenseBeen address]", "replace": "100 Example St, Austin, Texas 78701"},
+  {"find": "Title: [___]", "replace": "Title: Manager", "caption": "^SENSEBEEN"}
+ ]
+}

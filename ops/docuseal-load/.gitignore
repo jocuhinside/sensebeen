@@ -1,0 +1,6 @@
+facts.local.json
+work/
+*.docx
+*.pdf
+*.zip
+__pycache__/
