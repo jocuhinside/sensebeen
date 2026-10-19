@@ -10,9 +10,11 @@ Turns a `.docx` package (zip, folder, or one file) into DocuSeal templates with 
    - writes `work/<part>.payload.json`, `work/manifest.json`, `work/report.json` (what was filled, brackets still open, lines it could not attribute) and `work/qa/*.png` (each page with every field box drawn, colored by party)
 3. Look at every `work/qa/*.png` and `report.json` before loading.
 4. `node load.mjs work/manifest.json --dry-run`, then for real:
-   - `DOCUSEAL_API_KEY=... node load.mjs work/manifest.json --no-shots`, or
+   - `node --env-file=/path/to/.env load.mjs work/manifest.json --no-shots` (key as `DOCUSEAL_API_KEY`, `DOCUSEAL_API_TOKEN` or `DOCUSEAL_TOKEN`), or
    - `DOCUSEAL_EMAIL=... DOCUSEAL_PASSWORD=... node load.mjs work/manifest.json`: Playwright signs in (add `DOCUSEAL_OTP=` if 2FA is on), reads the API key from Settings > API for that run only, and screenshots each template's builder into `work/shots/`
    - `DOCUSEAL_API_BASE` defaults to `https://api.docuseal.com` (`.eu`, or `https://host/api` self-hosted; set `DOCUSEAL_APP_URL` for self-hosted)
+
+A work folder can be zipped and run on another machine: `@file:` paths resolve relative to the manifest.
 
 Templates upsert on `external_id` (`uat-06a-exa-d2`), so a rerun replaces rather than duplicates. Each load is read back and checked for field count and signer roles. Earlier templates for the same `UAT-NN` document (uploaded by hand, say) are listed in `results.json` as superseded; `--archive-old` archives them, which DocuSeal can undo.
 

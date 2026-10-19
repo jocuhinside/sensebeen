@@ -4,6 +4,7 @@
 // document as superseded (archived only with --archive-old; DocuSeal can unarchive).
 //
 //   DOCUSEAL_API_KEY=... node load.mjs WORK/manifest.json [--dry-run] [--no-shots]
+//   node --env-file=/path/to/.env load.mjs WORK/manifest.json --no-shots
 //   DOCUSEAL_EMAIL=... DOCUSEAL_PASSWORD=... [DOCUSEAL_OTP=123456] node load.mjs WORK/manifest.json
 //
 // Without an API key, Playwright signs in and reads the key from Settings > API for this run
@@ -24,10 +25,11 @@ const DRY = args.includes("--dry-run");
 const ARCHIVE_OLD = args.includes("--archive-old");
 const SHOTS = !args.includes("--no-shots");
 const work = path.dirname(path.resolve(manifestPath));
-const API = (process.env.DOCUSEAL_API_BASE ?? "https://api.docuseal.com").replace(/\/+$/, "");
+const E = process.env;
+const API = (E.DOCUSEAL_API_BASE ?? E.DOCUSEAL_API_URL ?? "https://api.docuseal.com").replace(/\/+$/, "");
 const APP = (process.env.DOCUSEAL_APP_URL ?? API.replace("//api.", "//").replace(/\/api$/, "")).replace(/\/+$/, "");
 const { DOCUSEAL_EMAIL: EMAIL, DOCUSEAL_PASSWORD: PASS, DOCUSEAL_OTP: OTP } = process.env;
-let KEY = process.env.DOCUSEAL_API_KEY;
+let KEY = E.DOCUSEAL_API_KEY ?? E.DOCUSEAL_API_TOKEN ?? E.DOCUSEAL_TOKEN ?? E.DOCUSEAL_KEY;
 
 function playwright() {
   try {
@@ -90,15 +92,23 @@ async function api(method, p, body) {
   return j;
 }
 
+// "@file:" paths may be relative to the manifest folder, so a work folder can be zipped and moved.
+function pdfPath(ref) {
+  const p = ref.slice(6);
+  if (path.isAbsolute(p) && fs.existsSync(p)) return p;
+  const rel = path.resolve(work, p);
+  return fs.existsSync(rel) ? rel : path.join(work, "pdf", path.basename(p));
+}
+
 function withFiles(payload) {
   const p = structuredClone(payload);
   for (const d of p.documents) {
-    if (d.file.startsWith("@file:")) d.file = fs.readFileSync(d.file.slice(6)).toString("base64");
+    if (d.file.startsWith("@file:")) d.file = fs.readFileSync(pdfPath(d.file)).toString("base64");
   }
   return p;
 }
 
-const manifest = JSON.parse(fs.readFileSync(manifestPath, "utf8"));
+const manifest = JSON.parse(fs.readFileSync(manifestPath, "utf8")).map((f) => path.resolve(work, f));
 fs.mkdirSync(path.join(work, "shots"), { recursive: true });
 
 if (DRY) {
