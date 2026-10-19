@@ -1,18 +1,37 @@
 {
  "rev": "D.2",
  "folder": "Package - Rev D.2",
- "sender_role": "SenseBeen",
- "role_order": ["SenseBeen", "Counterparty A", "Counterparty B"],
  "date_format": "MM/DD/YYYY",
+ "blank_width": 18,
  "skip": ["UAT-00", "UAT-07"],
+ "sender_role": "SenseBeen",
+ "sender_by_doc": {"UAT-06": "Board Secretary"},
+ "role_order": ["SenseBeen", "Counterparty A", "Director (Jane Example)", "Board Secretary"],
  "roles": [
   ["^SENSEBEEN", "SenseBeen"],
   ["^COUNTERPARTY A", "Counterparty A"],
-  ["^COUNTERPARTY B", "Counterparty B"],
-  ["Jane Example, Director", "Director: Jane Example", ["UAT-06"]]
+  ["^DIRECTOR$", "Director ({name})"],
+  ["SECRETARY$", "Board Secretary"]
  ],
+ "parts": {
+  "UAT-10": [
+   {"suffix": "main", "name": "Assignment"},
+   {"suffix": "exA-ink", "name": "Exhibit A (notarized, ink)", "starts": ["EXHIBIT A: CONFIRMATORY"], "esign": false,
+    "note": "Sign in ink before a notary; scan and attach."}
+  ]
+ },
  "fill": [
   {"find": "[SenseBeen address]", "replace": "100 Example St, Austin, Texas 78701"},
+  {"find": "[Counterparty address]", "blank": 46},
   {"find": "Title: [___]", "replace": "Title: Manager", "caption": "^SENSEBEEN"}
+ ],
+ "blanks": [
+  {"ctx": "Name:\\s*$", "width": 32},
+  {"ctx": "Example LLC, a\\s*$", "width": 16, "owner": "Counterparty A", "name": "State of organization", "same": true},
+  {"ctx": "(Effective Date\\s*\\|?|made as of)\\s*$", "width": 18, "name": "Effective date", "same": true},
+  {"ctx": "Upload the public key file \\(\\.pub\\.pem\\):\\s*$", "width": 30, "owner": "Counterparty A", "name": "Public key file", "type": "file"}
+ ],
+ "checks": [
+  {"ctx": "Disinterested", "x": [0.49, 0.59], "name": "Vote For", "docs": ["UAT-06"]}
  ]
 }

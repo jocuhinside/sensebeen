@@ -1,6 +1,7 @@
 #!/usr/bin/env node
-// Push prep.py payloads to DocuSeal as templates (upsert by external_id), verify each one
-// read-back, and screenshot it in the template builder.
+// Push prep.py payloads to DocuSeal as templates (upsert by external_id), verify each one by
+// read-back, screenshot it in the template builder, and list older uploads of the same UAT
+// document as superseded (archived only with --archive-old; DocuSeal can unarchive).
 //
 //   DOCUSEAL_API_KEY=... node load.mjs WORK/manifest.json [--dry-run] [--no-shots]
 //   DOCUSEAL_EMAIL=... DOCUSEAL_PASSWORD=... [DOCUSEAL_OTP=123456] node load.mjs WORK/manifest.json
@@ -20,6 +21,7 @@ if (!manifestPath) {
   process.exit(2);
 }
 const DRY = args.includes("--dry-run");
+const ARCHIVE_OLD = args.includes("--archive-old");
 const SHOTS = !args.includes("--no-shots");
 const work = path.dirname(path.resolve(manifestPath));
 const API = (process.env.DOCUSEAL_API_BASE ?? "https://api.docuseal.com").replace(/\/+$/, "");
@@ -142,9 +144,24 @@ for (const f of manifest) {
       await session.page.screenshot({ path: shot, fullPage: true });
       row.screenshot = shot;
     }
+    // Older uploads of the same document (e.g. "UAT-06A..." added by hand) are superseded by this one.
+    // Listed always; archived only with --archive-old (DocuSeal archive is reversible: PUT archived:false).
+    const key = (payload.name.match(/^UAT-\d+[A-Z]?/) || [])[0];
+    if (key && ok) {
+      const found = await api("GET", `/templates?q=${encodeURIComponent(key)}&limit=100`);
+      const old = (found.data ?? found).filter((x) => x.id !== t.id && !(x.external_id || "").startsWith(key.toLowerCase())
+        && new RegExp(`(^|[^A-Z0-9])${key}(?![A-Z0-9])`).test(x.name));
+      row.superseded = old.map((x) => ({ id: x.id, name: x.name, archived: false }));
+      for (const o of row.superseded) {
+        if (!ARCHIVE_OLD) continue;
+        await api("DELETE", `/templates/${o.id}`);
+        o.archived = true;
+      }
+    }
     results.push(row);
     if (!ok) failed++;
-    console.log(`${ok ? "ok  " : "MISMATCH"} ${payload.external_id} -> #${t.id} ${row.fields}/${want.length} fields, ${gotRoles.join(", ")}`);
+    console.log(`${ok ? "ok  " : "MISMATCH"} ${payload.external_id} -> #${t.id} ${row.fields}/${want.length} fields, ${gotRoles.join(", ")}`
+      + (row.superseded?.length ? `; supersedes ${row.superseded.map((o) => `#${o.id}${o.archived ? " (archived)" : ""}`).join(", ")}` : ""));
   } catch (e) {
     failed++;
     results.push({ external_id: payload.external_id, error: String(e.message) });
