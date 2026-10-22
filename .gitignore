@@ -5,3 +5,4 @@ doogee/sent/
 doogee/*.log
 runs/.runner
 ops/gig-replies/*.local.json
+__pycache__/
