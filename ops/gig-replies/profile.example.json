@@ -1,0 +1,14 @@
+{
+  "name": "Your Name",
+  "email": "you@protonmail.com",
+  "phone": "(408) 555-0100",
+  "area": "Downtown San Jose",
+  "avail": "evenings and weekends, plus most weekdays",
+  "exp": "I've worked brand ambassador and event staff shifts and I'm comfortable on my feet, engaging the public, and taking direction from an on-site lead",
+  "age": "",
+  "ig": "",
+  "video": "",
+  "car": false,
+  "resume": "~/Documents/resume.pdf",
+  "photos": ["~/Pictures/headshot.jpg", "~/Pictures/full-length.jpg"]
+}
